@@ -12,52 +12,52 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	/**
 	 * @var PdoDriver
 	 */
-	protected $db;
+	protected $_db;
 
 	/**
 	 * @var \PDOStatement
 	 */
-	protected $statement;
+	protected $_statement;
 
 	/**
 	 * @var null|string
 	 */
-	protected $sqlStatement;
+	protected $_sqlStatement;
 
 	/**
 	 * @var array|null
 	 */
-	protected $bindParams;
+	protected $_bindParams;
 
 	/**
 	 * @var Model|null
 	 */
-	protected $model;
+	protected $_model;
 
 	/**
 	 * @var int
 	 */
-	protected $cursorOrientation;
+	protected $_cursorOrientation;
 
 	/**
 	 * @var int
 	 */
-	protected $cursorOffset;
+	protected $_cursorOffset;
 
 	/**
 	 * @var int
 	 */
-	protected $fetchMode;
+	protected $_fetchMode;
 
 	/**
 	 * @var bool
 	 */
-	protected $autoFetchMode;
+	protected $_autoFetchMode;
 
 	/**
 	 * @var bool
 	 */
-	protected $saveState;
+	protected $_saveState;
 
 	/**
 	 * @param PdoDriver $connection
@@ -92,11 +92,11 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	{
 		$aParam = $this->_bindParams;
 		array_unshift($aParam, $this->_sqlStatement);
-		$statement = call_user_func_array([$this->_db, 'query'], $aParam);
-		if (empty($statement)) {
+		$oStatement = call_user_func_array([$this->_db, 'query'], $aParam);
+		if (empty($oStatement)) {
 			return false;
 		}
-		$this->_statement = $statement;
+		$this->_statement = $oStatement;
 		$this->_cursorOrientation = \PDO::FETCH_ORI_NEXT;
 		$this->_cursorOffset = 0;
 		return true;
@@ -234,11 +234,11 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 		} elseif (!empty($config['fetchColumn'])) {
 			// Nur ein Feld holen
 			if (is_string($config['fetchColumn'])) {
-				$row = $this->_statement->fetch(\PDO::FETCH_ASSOC);
-				return $row[$config['fetchColumn']];
+				$aRow = $this->_statement->fetch(\PDO::FETCH_ASSOC);
+				return $aRow[$config['fetchColumn']];
 			} else {
-				$row = $this->_oStatement->fetch(\PDO::FETCH_NUM);
-				return $row[0];
+				$aRow = $this->_statement->fetch(\PDO::FETCH_NUM);
+				return $aRow[0];
 			}
 		} elseif (!empty($config['fetchAll'])) {
 			// Komplettes Ergebnis holen
@@ -289,7 +289,7 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function getInternalResult()
 	{
-		return $this->_oStatement;
+		return $this->_statement;
 	}
 
 	/**
@@ -303,21 +303,21 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	}
 
 	/**
-	 * @param int $cursorOrientation
-	 * @param int $cursorOffset
+	 * @param int $iCursorOrientation
+	 * @param int $iCursorOffset
 	 * @return bool|array|object|Model
 	 */
-	protected function _fetchRow($cursorOrientation, $cursorOffset = 0)
+	protected function _fetchRow($iCursorOrientation, $iCursorOffset = 0)
 	{
 		if ($this->_autoFetchMode && !empty($this->_model)) {
 			$this->_statement->setFetchMode(\PDO::FETCH_CLASS, get_class($this->_model));
-			$model = $this->_statement->fetch(\PDO::FETCH_CLASS, $cursorOrientation, $cursorOffset);
+			$model = $this->_statement->fetch(\PDO::FETCH_CLASS, $iCursorOrientation, $iCursorOffset);
 			if ($this->_saveState && method_exists($model, 'saveState')) {
 				$model->saveState();
 			}
 			return $model;
 		} else {
-			return $this->_oStatement->fetch($this->_iFetchMode, $cursorOrientation, $cursorOffset);
+			return $this->_statement->fetch($this->_fetchMode, $iCursorOrientation, $iCursorOffset);
 		}
 	}
 
@@ -340,7 +340,7 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function getLast()
 	{
-		$this->_iCursorOffset = $this->_oStatement->rowCount();
+		$this->_iCursorOffset = $this->_statement->rowCount();
 		$this->_iCursorOrientation = \PDO::FETCH_ORI_NEXT;
 		return $this->_fetchRow(\PDO::FETCH_ORI_LAST);
 	}
@@ -353,9 +353,9 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function toArray(): array
 	{
-		$this->_iCursorOffset = $this->_oStatement->rowCount();
-		$this->_iCursorOrientation = \PDO::FETCH_ORI_NEXT;
-		return $this->_oStatement->fetchAll(\PDO::FETCH_ASSOC);
+		$this->_cursorOffset = $this->_statement->rowCount();
+		$this->_cursorOrientation = \PDO::FETCH_ORI_NEXT;
+		return $this->_statement->fetchAll(\PDO::FETCH_ASSOC);
 	}
 
 	/**
@@ -366,7 +366,7 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function current(): mixed
 	{
-		return $this->_fetchRow(\PDO::FETCH_ORI_ABS, $this->_iCursorOffset);
+		return $this->_fetchRow(\PDO::FETCH_ORI_ABS, $this->_cursorOffset);
 	}
 
 	/**
@@ -377,7 +377,7 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function next(): void
 	{
-		$this->_iCursorOffset++;
+		$this->_cursorOffset++;
 	}
 
 	/**
@@ -388,7 +388,7 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function key(): mixed
 	{
-		return $this->_iCursorOffset;
+		return $this->_cursorOffset;
 	}
 
 	/**
@@ -400,7 +400,7 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function valid(): bool
 	{
-		return $this->_iCursorOffset < $this->_oStatement->rowCount();
+		return $this->_cursorOffset < $this->_statement->rowCount();
 	}
 
 	/**
@@ -411,7 +411,7 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function rewind(): void
 	{
-		$this->_iCursorOffset = 0;
+		$this->_cursorOffset = 0;
 	}
 
 	/**
@@ -425,7 +425,7 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function seek($offset): void
 	{
-		$this->_iCursorOffset = $offset;
+		$this->_cursorOffset = $offset;
 	}
 
 	/**
@@ -439,7 +439,7 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function count(): int
 	{
-		return $this->_oStatement->rowCount();
+		return $this->_statement->rowCount();
 	}
 
 	/**
@@ -456,7 +456,7 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function offsetExists($offset): bool
 	{
-		return $offset >= 0 && $offset < $this->_oStatement->rowCount();
+		return $offset >= 0 && $offset < $this->_statement->rowCount();
 	}
 
 	/**
@@ -509,7 +509,7 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function getSQLStatement()
 	{
-		return $this->_sSqlStatement;
+		return $this->_sqlStatement;
 	}
 
 	/**
@@ -517,7 +517,7 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function getSQLVariables()
 	{
-		return $this->_aBindParams;
+		return $this->_bindParams;
 	}
 
 	/**
@@ -527,7 +527,7 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function escapeString($str)
 	{
-		return $this->_oDb->escapeString($str);
+		return $this->_db->escapeString($str);
 	}
 
 }
