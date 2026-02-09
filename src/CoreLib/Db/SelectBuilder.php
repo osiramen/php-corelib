@@ -150,86 +150,86 @@ class SelectBuilder extends BaseBuilder
 		if (empty($this->from)) {
 			throw new Exception('No models set by from()');
 		}
-		$sStatement = 'SELECT ';
+		$statement = 'SELECT ';
 		if (!empty($this->distinct)) {
-			$sStatement .= ' DISTINCT ';
+			$statement .= ' DISTINCT ';
 		}
 		if (!empty($this->injectAfterSelect)) {
-			$sStatement .= ' ';
-			$sStatement .= $this->injectAfterSelect;
-			$sStatement .= ' ';
+			$statement .= ' ';
+			$statement .= $this->injectAfterSelect;
+			$statement .= ' ';
 		}
-		$sStatement .= !empty($this->_columns) ? implode(', ', $this->_protectColumns()) : '*';
-		$sStatement .= ' FROM ';
-		foreach ($this->from as $iIndex => $mItem) {
-			if ($iIndex > 0) {
-				$sStatement .= ',';
+		$statement .= !empty($this->_columns) ? implode(', ', $this->_protectColumns()) : '*';
+		$statement .= ' FROM ';
+		foreach ($this->from as $index => $item) {
+			if ($index > 0) {
+				$statement .= ',';
 			}
-			if (is_string($mItem)) {
-				$sStatement .= $mItem;
+			if (is_string($item)) {
+				$statement .= $item;
 			}
-			if (is_array($mItem) && $mItem[0] instanceof SelectBuilder) {
-				$sStatement .= '(' . $mItem[0]->_buildSqlStatement() . ')';
-				if (!empty($mItem[1])) {
-					$sStatement .= ' AS ' . $this->_escapeIdentifier($mItem[1]);
+			if (is_array($item) && $item[0] instanceof SelectBuilder) {
+				$statement .= '(' . $item[0]->_buildSqlStatement() . ')';
+				if (!empty($item[1])) {
+					$statement .= ' AS ' . $this->_escapeIdentifier($item[1]);
 				}
 			}
 		}
-		//$sStatement .= implode(', ', $this->_aFrom);
+		//$statement .= implode(', ', $this->_aFrom);
 		if (isset($this->_join)) {
-			foreach ($this->_join as $aJoin) {
-				if (!empty($aJoin['type'])) {
-					$sStatement .= ' ';
-					$sStatement .= $aJoin['type'];
+			foreach ($this->_join as $join) {
+				if (!empty($join['type'])) {
+					$statement .= ' ';
+					$statement .= $join['type'];
 				}
-				$sStatement .= ' JOIN ';
-				$sStatement .= $aJoin['table'];
-				$sStatement .= ' ON (';
-				$sStatement .= $this->_compileCondition($aJoin['conditions']);
-				$sStatement .= ')';
+				$statement .= ' JOIN ';
+				$statement .= $join['table'];
+				$statement .= ' ON (';
+				$statement .= $this->_compileCondition($join['conditions']);
+				$statement .= ')';
 			}
 		}
 		if (!empty($this->condition)) {
-			$sStatement .= ' WHERE ';
-			$sStatement .= $this->_compileCondition($this->condition);
+			$statement .= ' WHERE ';
+			$statement .= $this->_compileCondition($this->condition);
 		}
 		if (!empty($this->groupBy)) {
-			$aColumns = is_array($this->groupBy) ? $this->groupBy : explode(',', $this->groupBy);
-			foreach ($aColumns as $iIndex => $sColumn) {
-				$aColumns[$iIndex] = $this->_protectIdentifier($sColumn, null, false, true);
+			$columns = is_array($this->groupBy) ? $this->groupBy : explode(',', $this->groupBy);
+			foreach ($columns as $index => $column) {
+				$columns[$index] = $this->_protectIdentifier($column, null, false, true);
 			}
-			$sStatement .= ' GROUP BY ';
-			$sStatement .= implode(', ', $aColumns);
+			$statement .= ' GROUP BY ';
+			$statement .= implode(', ', $columns);
 		}
 		if (!empty($this->_orderBy)) {
-			$aColumns = is_array($this->_orderBy) ? $this->_orderBy : explode(',', $this->_orderBy);
-			foreach ($aColumns as $iIndex => $sColumn) {
-				$aColumns[$iIndex] = $this->_protectIdentifier($sColumn, null, false, true);
+			$columns = is_array($this->_orderBy) ? $this->_orderBy : explode(',', $this->_orderBy);
+			foreach ($columns as $index => $column) {
+				$columns[$index] = $this->_protectIdentifier($column, null, false, true);
 			}
-			$sStatement .= ' ORDER BY ';
-			$sStatement .= implode(', ', $aColumns);
+			$statement .= ' ORDER BY ';
+			$statement .= implode(', ', $columns);
 		}
 		if (!empty($this->_limit)) {
-			$sStatement .= ' LIMIT ' . $this->_limit;
+			$statement .= ' LIMIT ' . $this->_limit;
 			if (!empty($this->_offset)) {
-				$sStatement .= ' OFFSET ';
-				$sStatement .= $this->_offset;
+				$statement .= ' OFFSET ';
+				$statement .= $this->_offset;
 			}
 		}
 		if (!empty($this->forUpdate)) {
-			$sStatement .= ' FOR UPDATE';
+			$statement .= ' FOR UPDATE';
 		} elseif (!empty($this->sharedLock)) {
 			switch ($this->db->getDriver()) {
 				case 'mysql':
-					$sStatement .= ' IN SHARED MODE';
+					$statement .= ' IN SHARED MODE';
 					break;
 				case 'pgsql':
-					$sStatement .= ' FOR SHARE';
+					$statement .= ' FOR SHARE';
 					break;
 				default:
 					throw new Exception("Shared lock not implemented for or by this driver");
 			}
 		}
-		return $sStatement;
+		return $statement;
 	}
 }

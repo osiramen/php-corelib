@@ -142,51 +142,51 @@ class PdoDriver
 	}
 
 	/**
-	 * @param LoggerInterface $_logger
+	 * @param LoggerInterface $logger
 	 */
-	public function setLogger($_logger)
+	public function setLogger($logger)
 	{
-		$this->logger = $_logger;
+		$this->logger = $logger;
 	}
 
 	/**
-	 * @param string $sStatement
+	 * @param string $statement
 	 * @param array|null $params
 	 * @return bool|PDOStatement
 	 * @throws Exception
 	 */
-	public function query($sStatement, $params = null)
+	public function query($statement, $params = null)
 	{
 		retry:
-		$fTimeStart = \microtime(true);
+		$timeStart = \microtime(true);
 		try {
-			$aFuncParams = \func_get_args();
-			\array_shift($aFuncParams); // throw the $sStatement argument
-			if (\count($aFuncParams) === 1 && \is_array($aFuncParams[0])) {
-				$aFuncParams = $aFuncParams[0];
+			$args = \func_get_args();
+			\array_shift($args); // remove the $statement argument
+			if (\count($args) === 1 && \is_array($args[0])) {
+				$args = $args[0];
 			}
-			if (!empty($aFuncParams)) {
-				$oStatement = $this->pdo->prepare($sStatement);
-				$oStatement->execute($aFuncParams);
+			if (!empty($args)) {
+				$stmt = $this->pdo->prepare($statement);
+				$stmt->execute($args);
 			} else {
-				$oStatement = $this->pdo->query($sStatement);
+				$stmt = $this->pdo->query($statement);
 			}
-		} catch (\PDOException $oException) {
-			$this->_processException($oException);
+		} catch (\PDOException $exception) {
+			$this->_processException($exception);
 			goto retry;
 		} finally {
 			if ($this->logger) {
-				$sElapsedMs = \sprintf('%0.3f', (\microtime(true) - $fTimeStart) * 1000);
-				$sStatement = \preg_replace('/^\s+/m', '', $sStatement);
-				$sLogMessage = 'Query: ' . $sStatement . ' -- (' . $sElapsedMs . ' ms)';
-				if (isset($aFuncParams)) {
-					$sLogMessage .= ' Arguments: ' . \json_encode($aFuncParams);
+				$elapsedMs = \sprintf('%0.3f', (\microtime(true) - $timeStart) * 1000);
+				$cleanStatement = \preg_replace('/^\s+/m', '', $statement);
+				$logMessage = 'Query: ' . $cleanStatement . ' -- (' . $elapsedMs . ' ms)';
+				if (isset($args)) {
+					$logMessage .= ' Arguments: ' . \json_encode($args);
 				}
-				$this->logger->debug($sLogMessage);
+				$this->logger->debug($logMessage);
 			}
 		}
-		$this->statement = $oStatement;
-		return ($oStatement->columnCount() > 0) ? $oStatement : true;
+		$this->statement = $stmt;
+		return ($stmt->columnCount() > 0) ? $stmt : true;
 	}
 
 	/**
@@ -207,8 +207,8 @@ class PdoDriver
 			} else {
 				$sth = $this->pdo->prepare($query);
 			}
-		} catch (\PDOException $oException) {
-			$this->_processException($oException);
+		} catch (\PDOException $exception) {
+			$this->_processException($exception);
 			goto retry;
 		}
 		$this->statement = $sth;
@@ -230,9 +230,9 @@ class PdoDriver
 			$params = func_get_args();
 			array_shift($params); // throw the $sth argument
 			$this->statement->execute($params);
-		} catch (\PDOException $oException) {
-			$this->_processException($oException);
-			throw $oException;
+		} catch (\PDOException $exception) {
+			$this->_processException($exception);
+			throw $exception;
 		} finally {
 			if ($this->logger) {
 				$runtime = sprintf('%0.3f', (microtime(true) - $time_start) * 1000);
@@ -247,24 +247,24 @@ class PdoDriver
 	}
 
 	/**
-	 * @param \PDOException $oException
+	 * @param \PDOException $exception
 	 * @throws Exception
 	 */
-	private function _processException($oException)
+	private function _processException($exception)
 	{
 		if ($this->logger) {
-			$this->logger->error($oException->getMessage());
+			$this->logger->error($exception->getMessage());
 		}
-		$bInTransaction = !empty($this->transactionLevel);
-		switch ($oException->errorInfo[1]) {
+		$inTransaction = !empty($this->transactionLevel);
+		switch ($exception->errorInfo[1]) {
 			case 1213: // Error: 1213 SQLSTATE: 40001 (ER_LOCK_DEADLOCK)
 			case '40P01': // PGSQL: 40P01 – deadlock_detected
 			case 40001: // Deadlock or timeout with automatic rollback occurred.
-				if ($bInTransaction) {
+				if ($inTransaction) {
 					throw new TransactionLostException(
 						"Deadlock found when trying to get lock; try restarting transaction",
 						40001,
-						$oException
+						$exception
 					);
 				}
 				// Re-run last command
@@ -275,24 +275,24 @@ class PdoDriver
 			case 8004:
 			case 8006: // PGSQL: 8006 Connection Exception
 				if (self::$automaticReconnect) {
-					$iCounter = 1;
+					$counter = 1;
 					while (true) {
 						if ($this->logger) {
-							$this->logger->notice(sprintf("Reconnecting db try # %d ...", $iCounter));
+							$this->logger->notice(sprintf("Reconnecting db try # %d ...", $counter));
 						}
 						try {
 							$this->connect();
 							break;
 						} catch (\Exception $ex) {
-							$iCounter++;
+							$counter++;
 							sleep(1);
 						}
 					}
-					if ($bInTransaction) {
+					if ($inTransaction) {
 						throw new TransactionLostException(
 							"Lost transaction during reconnect",
 							8001,
-							$oException
+							$exception
 						);
 					}
 					// Re-run last command
@@ -300,7 +300,7 @@ class PdoDriver
 				}
 				break;
 		}
-		throw $oException;
+		throw $exception;
 	}
 
 	/**
@@ -460,9 +460,9 @@ class PdoDriver
 				$result = false;
 			}
 			return $result;
-		} catch (\PDOException $oException) {
-			$this->_processException($oException);
-			throw $oException;
+		} catch (\PDOException $exception) {
+			$this->_processException($exception);
+			throw $exception;
 		} finally {
 			if ($this->logger && $result) {
 				$runtime = sprintf('%0.3f', (microtime(true) - $time_start) * 1000);
@@ -496,9 +496,9 @@ class PdoDriver
 				$result = false;
 			}
 			return $result;
-		} catch (\PDOException $oException) {
-			$this->_processException($oException);
-			throw $oException;
+		} catch (\PDOException $exception) {
+			$this->_processException($exception);
+			throw $exception;
 		} finally {
 			if ($this->logger && $result) {
 				$runtime = sprintf('%0.3f', (microtime(true) - $time_start) * 1000);
@@ -532,9 +532,9 @@ class PdoDriver
 				$result = false;
 			}
 			return $result;
-		} catch (\PDOException $oException) {
-			$this->_processException($oException);
-			throw $oException;
+		} catch (\PDOException $exception) {
+			$this->_processException($exception);
+			throw $exception;
 		} finally {
 			if ($this->logger && $result) {
 				$runtime = sprintf('%0.3f', (microtime(true) - $time_start) * 1000);

@@ -9,13 +9,13 @@ namespace CoreLib\Db;
  * @example
  *
  * (new InsertBuilder())
- *     ->into('Country')
+ *     ->insert('Country')
  * 	   ->values(['iso2' => 'Z1', 'iso3' => 'ZZ1'])
  * 	   ->values(['iso2' => 'Z2', 'iso3' => 'ZZ2'])
  *     ->execute()
  *
  * (new InsertBuilder())
- *     ->into('Country')
+ *     ->insert('Country')
  * 	   ->values(['iso2' => 'Z1', 'iso3' => 'ZZ1', 'name' => 'Zoolooland'])
  *     ->upsert(['name' => 'Zoolooland'])
  *     ->execute()
@@ -91,10 +91,10 @@ class InsertBuilder extends BaseBuilder
 		$this->_upsert = (bool) $updateValues;
 		if (is_array($updateValues)) {
 			if ($escape) {
-				foreach ($updateValues as $sColumn => $mValue) {
+				foreach ($updateValues as $column => $value) {
 					// SqlNode instances are stored as-is, serialized later
-					if (!($mValue instanceof SqlNode)) {
-						$updateValues[$sColumn] = $this->escapeValue($mValue);
+					if (!($value instanceof SqlNode)) {
+						$updateValues[$column] = $this->escapeValue($value);
 					}
 				}
 			}
@@ -148,12 +148,12 @@ class InsertBuilder extends BaseBuilder
 			throw new Exception('No table set');
 		}
 		if (empty($this->_values)) {
-			$aFields = $this->_bindParams;
-			if (empty($aFields)) {
+			$fields = $this->_bindParams;
+			if (empty($fields)) {
 				throw new Exception('No values or bind parameters set');
 			}
 			if (empty($this->_columns)) {
-				$this->columns($aFields);
+				$this->columns($fields);
 			}
 		} else {
 			if (empty($this->_columns)) {
@@ -163,14 +163,14 @@ class InsertBuilder extends BaseBuilder
 		if ($this->_replaceInto) {
 			switch ($this->db->getDriver()) {
 				case 'mysql':
-					$sStatement = 'REPLACE INTO ';
+					$statement = 'REPLACE INTO ';
 					break;
 				case 'sqlite':
-					$sStatement = 'INSERT OR REPLACE ';
+					$statement = 'INSERT OR REPLACE ';
 					break;
 				case 'pgsql':
-					$sStatement = 'INSERT INTO ';
-					$bUpsert = true;
+					$statement = 'INSERT INTO ';
+					$upsert = true;
 					break;
 				default:
 					throw new Exception("Replace not implemented for or by this driver");
@@ -178,63 +178,63 @@ class InsertBuilder extends BaseBuilder
 		} elseif ($this->_ignore) {
 			switch ($this->db->getDriver()) {
 				case 'mysql':
-					$sStatement = 'INSERT IGNORE INTO ';
+					$statement = 'INSERT IGNORE INTO ';
 					break;
 				case 'sqlite':
-					$sStatement = 'INSERT OR IGNORE INTO ';
+					$statement = 'INSERT OR IGNORE INTO ';
 					break;
 				case 'pgsql':
-					$sStatement = 'INSERT INTO ';
-					$sConflictClause = ' ON CONFLICT DO NOTHING ';
+					$statement = 'INSERT INTO ';
+					$conflictClause = ' ON CONFLICT DO NOTHING ';
 					break;
 				default:
 					throw new Exception("Replace not implemented for or by this driver");
 			}
 		} else {
-			$sStatement = 'INSERT INTO ';
+			$statement = 'INSERT INTO ';
 		}
-		$sStatement .= $this->_table;
-		$sStatement .= ' (';
-		$sStatement .= implode(',', $this->_protectColumns());
-		$sStatement .= ') VALUES ';
-		if (isset($aFields)) {
-			$sStatement .= '(:';
-			$sStatement .= implode(',:', $aFields);
-			$sStatement .= ')';
+		$statement .= $this->_table;
+		$statement .= ' (';
+		$statement .= implode(',', $this->_protectColumns());
+		$statement .= ') VALUES ';
+		if (isset($fields)) {
+			$statement .= '(:';
+			$statement .= implode(',:', $fields);
+			$statement .= ')';
 		} else {
-			foreach ($this->_values as $aValues) {
-				$sStatement .= '(';
+			foreach ($this->_values as $values) {
+				$statement .= '(';
 				// Serialize values: already escaped strings pass through, SqlNode instances serialize now
 				$serializedValues = [];
-				foreach ($aValues as $mValue) {
-					if ($mValue instanceof SqlNode) {
-						$serializedValues[] = $this->serializeScalar($mValue);
+				foreach ($values as $value) {
+					if ($value instanceof SqlNode) {
+						$serializedValues[] = $this->serializeScalar($value);
 					} else {
-						// Already escaped by values()/set(), or raw value if $bEscape=false
-						$serializedValues[] = $mValue;
+						// Already escaped by values()/set(), or raw value if $escape=false
+						$serializedValues[] = $value;
 					}
 				}
-				$sStatement .= implode(', ', $serializedValues);
-				$sStatement .= '),';
+				$statement .= implode(', ', $serializedValues);
+				$statement .= '),';
 			}
-			$sStatement = substr($sStatement, 0, -1);
+			$statement = substr($statement, 0, -1);
 		}
-		if ($this->_upsert || !empty($bUpsert)) {
+		if ($this->_upsert || !empty($upsert)) {
 			switch ($this->db->getDriver()) {
 				case 'mysql':
-					$sStatement .= ' ON DUPLICATE KEY UPDATE ';
+					$statement .= ' ON DUPLICATE KEY UPDATE ';
 					break;
 				case 'sqlite':
-					$sStatement .= ' ON CONFLICT DO UPDATE SET ';
+					$statement .= ' ON CONFLICT DO UPDATE SET ';
 					break;
 				case 'pgsql':
 					if (empty($this->_conflictTarget)) {
 						throw new Exception("PostgreSQL requires a conflict target for UPSERT");
 					}
 					if (is_array($this->_conflictTarget)) {
-						$sStatement .= ' ON CONFLICT (' . implode(',', $this->_protectColumns($this->_conflictTarget)) . ') DO UPDATE SET ';
+						$statement .= ' ON CONFLICT (' . implode(',', $this->_protectColumns($this->_conflictTarget)) . ') DO UPDATE SET ';
 					} else {
-						$sStatement .= ' ON CONFLICT ON CONSTRAINT ' . $this->_protectIdentifier($this->_conflictTarget) . ' DO UPDATE SET ';
+						$statement .= ' ON CONFLICT ON CONSTRAINT ' . $this->_protectIdentifier($this->_conflictTarget) . ' DO UPDATE SET ';
 					}
 					break;
 				default:
@@ -242,55 +242,55 @@ class InsertBuilder extends BaseBuilder
 			}
 			$sep = '';
 			if (!empty($this->_updateValues)) {
-				foreach ($this->_updateValues as $sColumn => $mValue) {
-					$sStatement .= $sep;
-					$sStatement .= $this->_protectIdentifier($sColumn);
-					$sStatement .= '=';
+				foreach ($this->_updateValues as $column => $value) {
+					$statement .= $sep;
+					$statement .= $this->_protectIdentifier($column);
+					$statement .= '=';
 					// Serialize SqlNode instances in update values
-					if ($mValue instanceof SqlNode) {
-						$sStatement .= $this->serializeScalar($mValue);
+					if ($value instanceof SqlNode) {
+						$statement .= $this->serializeScalar($value);
 					} else {
 						// Already escaped by upsert() method
-						$sStatement .= $mValue;
+						$statement .= $value;
 					}
 					$sep = ',';
 				}
-			} elseif (isset($aFields)) {
-				foreach ($aFields as $sColumn) {
-					$sStatement .= $sep;
-					$sStatement .= $this->_protectIdentifier($sColumn);
-					$sStatement .= '=:';
-					$sStatement .= $sColumn;
+			} elseif (isset($fields)) {
+				foreach ($fields as $column) {
+					$statement .= $sep;
+					$statement .= $this->_protectIdentifier($column);
+					$statement .= '=:';
+					$statement .= $column;
 					$sep = ',';
 				}
 			} else {
 				if (count($this->_values) > 1) {
 					throw new Exception('Upsert with multiple value sets is not supported without explicit update values');
 				}
-				foreach ($this->_values[0] as $sColumn => $mValue) {
-					$sStatement .= $sep;
-					$sStatement .= $this->_protectIdentifier($sColumn);
-					$sStatement .= '=';
+				foreach ($this->_values[0] as $column => $value) {
+					$statement .= $sep;
+					$statement .= $this->_protectIdentifier($column);
+					$statement .= '=';
 					// Serialize SqlNode instances in upsert values
-					if ($mValue instanceof SqlNode) {
-						$sStatement .= $this->serializeScalar($mValue);
+					if ($value instanceof SqlNode) {
+						$statement .= $this->serializeScalar($value);
 					} else {
 						// Already escaped by values()/set()
-						$sStatement .= $mValue;
+						$statement .= $value;
 					}
 					$sep = ',';
 				}
 			}
-		} elseif (!empty($sConflictClause)) {
-			$sStatement .= $sConflictClause;
+		} elseif (!empty($conflictClause)) {
+			$statement .= $conflictClause;
 		}
 		if (!empty($this->_returning)) {
-			$sStatement .= ' RETURNING ';
-			$sStatement .= implode(', ', $this->_protectColumns($this->_returning));
+			$statement .= ' RETURNING ';
+			$statement .= implode(', ', $this->_protectColumns($this->_returning));
 			$this->_isQuery = true;
 		} else {
 			$this->_isQuery = false;
 		}
-		return $sStatement;
+		return $statement;
 	}
 }

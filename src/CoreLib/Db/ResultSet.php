@@ -90,13 +90,13 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function execute()
 	{
-		$aParam = $this->_bindParams;
-		array_unshift($aParam, $this->_sqlStatement);
-		$oStatement = call_user_func_array([$this->_db, 'query'], $aParam);
-		if (empty($oStatement)) {
+		$param = $this->_bindParams;
+		array_unshift($param, $this->_sqlStatement);
+		$statement = call_user_func_array([$this->_db, 'query'], $param);
+		if (empty($statement)) {
 			return false;
 		}
-		$this->_statement = $oStatement;
+		$this->_statement = $statement;
 		$this->_cursorOrientation = \PDO::FETCH_ORI_NEXT;
 		$this->_cursorOffset = 0;
 		return true;
@@ -110,10 +110,10 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function fetch()
 	{
-		$mResult = $this->_statement->fetch($this->_fetchMode, $this->_cursorOrientation, $this->_cursorOffset);
+		$result = $this->_statement->fetch($this->_fetchMode, $this->_cursorOrientation, $this->_cursorOffset);
 		$this->_cursorOrientation = \PDO::FETCH_ORI_NEXT;
 		$this->_cursorOffset++;
-		return $mResult;
+		return $result;
 	}
 
 	/**
@@ -125,10 +125,10 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function fetchColumn($columnNumber = 0)
 	{
-		$mResult = $this->_statement->fetchColumn($columnNumber);
+		$result = $this->_statement->fetchColumn($columnNumber);
 		$this->_cursorOrientation = \PDO::FETCH_ORI_NEXT;
 		$this->_cursorOffset++;
-		return $mResult;
+		return $result;
 	}
 
 	/**
@@ -138,10 +138,10 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function fetchArray()
 	{
-		$mResult = $this->_statement->fetch(\PDO::FETCH_ASSOC, $this->_cursorOrientation, $this->_cursorOffset);
+		$result = $this->_statement->fetch(\PDO::FETCH_ASSOC, $this->_cursorOrientation, $this->_cursorOffset);
 		$this->_cursorOrientation = \PDO::FETCH_ORI_NEXT;
 		$this->_cursorOffset++;
-		return $mResult;
+		return $result;
 	}
 
 	/**
@@ -151,10 +151,10 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 	 */
 	public function fetchObject()
 	{
-		$mResult = $this->_statement->fetch(\PDO::FETCH_OBJ, $this->_cursorOrientation, $this->_cursorOffset);
+		$result = $this->_statement->fetch(\PDO::FETCH_OBJ, $this->_cursorOrientation, $this->_cursorOffset);
 		$this->_cursorOrientation = \PDO::FETCH_ORI_NEXT;
 		$this->_cursorOffset++;
-		return $mResult;
+		return $result;
 	}
 
 	/**
@@ -170,17 +170,17 @@ class ResultSet implements \SeekableIterator, \Countable, \ArrayAccess
 		$this->_cursorOrientation = \PDO::FETCH_ORI_NEXT;
 		return $this->_statement->fetchAll($fetchMode ?: $this->_fetchMode);
 		/*
-		$mRow = $this->_oStatement->fetch($this->_iFetchStyle, $this->_iCursorOrientation, $this->_iCursorOffset);
+		$row = $this->_statement->fetch($this->_iFetchStyle, $this->_iCursorOrientation, $this->_iCursorOffset);
 		$this->_iCursorOrientation = \PDO::FETCH_ORI_NEXT;
 		$this->_iCursorOffset = 0;
-		$aResult = array();
-		if ($mRow !== false) {
-			$aResult[] = $mRow;
-			while ($mRow = $this->_oStatement->fetch($this->_iFetchStyle)) {
-				$aResult[] = $mRow;
+		$resultArray = array();
+		if ($row !== false) {
+			$resultArray[] = $row;
+			while ($row = $this->_statement->fetch($this->_iFetchStyle)) {
+				$resultArray[] = $row;
 			}
 		}
-		return $aResult;
+		return $resultArray;
 		*/
 	}
 

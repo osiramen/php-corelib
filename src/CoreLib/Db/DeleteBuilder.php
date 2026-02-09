@@ -35,8 +35,8 @@ class DeleteBuilder extends BaseBuilder
 	{
 		$this->_model = null;
 		if (is_array($model)) {
-			foreach ($model as $sModel) {
-				$this->_from[] = $this->_protectIdentifier($sModel, null, true);
+			foreach ($model as $modelItem) {
+				$this->_from[] = $this->_protectIdentifier($modelItem, null, true);
 			}
 		} else {
 			$this->_from[] = $this->_protectIdentifier($model, $alias, true);
@@ -73,15 +73,15 @@ class DeleteBuilder extends BaseBuilder
 		}
 		$statement = 'DELETE FROM ' . implode(', ', $this->_from);
 		if (!empty($this->_join)) {
-			foreach ($this->_join as $aJoin) {
-				if (!empty($aJoin['type'])) {
+			foreach ($this->_join as $join) {
+				if (!empty($join['type'])) {
 					$statement .= ' ';
-					$statement .= $aJoin['type'];
+					$statement .= $join['type'];
 				}
 				$statement .= ' JOIN ';
-				$statement .= $aJoin['table'];
+				$statement .= $join['table'];
 				$statement .= ' ON (';
-				$statement .= $this->_compileCondition($aJoin['conditions']);
+				$statement .= $this->_compileCondition($join['conditions']);
 				$statement .= ')';
 			}
 		}
@@ -91,8 +91,8 @@ class DeleteBuilder extends BaseBuilder
 		}
 		if (!empty($this->_orderBy)) {
 			$columns = is_array($this->_orderBy) ? $this->_orderBy : explode(',', $this->_orderBy);
-			foreach ($columns as $iIndex => $sColumn) {
-				$columns[$iIndex] = $this->_protectIdentifier($sColumn, null, false, true);
+			foreach ($columns as $index => $column) {
+				$columns[$index] = $this->_protectIdentifier($column, null, false, true);
 			}
 			$statement .= ' ORDER BY ';
 			$statement .= implode(', ', $columns);
